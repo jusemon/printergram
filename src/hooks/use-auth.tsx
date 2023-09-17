@@ -12,12 +12,13 @@ type SignOut = (() => Promise<void>) | null;
 
 type AuthContextProps = {
   user: User | null;
+  photo: string;
   signIn: SignIn;
   signOut: SignOut;
 };
 
 type User = null | {
-  userId: number;
+  id: number;
   accessHash: number;
   [name: string]: any;
 };
@@ -38,6 +39,7 @@ export function useAuth() {
 export function useProvideAuth() {
   const telegram = useTelegram();
   const [user, setUser] = useState<User>(null);
+  const [photo, setPhoto] = useState<string>('');
   const [signIn, setSignIn] = useState<SignIn>(null);
   const [signOut, setSignOut] = useState<SignOut>(null);
 
@@ -47,14 +49,17 @@ export function useProvideAuth() {
     }
 
     if (telegram.isLogged) {
-      await telegram.getClient();
       const tlUser = await telegram.getMe();
       setUser(tlUser.toJSON() as unknown as User);
+      const photo = await telegram.getProfilePic();
+      setPhoto(photo);
     }
 
     setSignIn(() => async (params: TelegramWrapperLoginParams) => {
       const tlUser = await telegram.login(params);
       setUser(tlUser.toJSON() as unknown as User);
+      const photo = await telegram.getProfilePic();
+      setPhoto(photo);
     });
 
     setSignOut(() => async () => {
@@ -68,6 +73,7 @@ export function useProvideAuth() {
   }, [setupService]);
 
   return {
+    photo,
     user,
     signIn,
     signOut,
