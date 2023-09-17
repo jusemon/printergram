@@ -65,6 +65,15 @@ class TelegramWrapper {
     return await this._client.getMe();
   }
 
+  async getProfilePic() {
+    const data = await this._client.downloadProfilePhoto('me');
+    if (!data || data.length === 0) {
+      return '';
+    }
+    const blob = new Blob([data], { type: 'image/jpg' });
+    return URL.createObjectURL(blob);
+  }
+
   async getChannels() {
     return await this._client.getDialogs();
   }

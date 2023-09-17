@@ -14,8 +14,8 @@ export default function useCountries({ telegram, lang }: UseCountriesConfig) {
     if (!telegram) {
       return;
     }
-    const telegramClient = await telegram.getClient();
-    const countryList = await telegramClient.invoke(
+    const client = await telegram.getClient();
+    const countryList = await client.invoke(
       new Api.help.GetCountriesList({ langCode: lang })
     );
     const { countries } = countryList as unknown as Api.help.CountriesList;
