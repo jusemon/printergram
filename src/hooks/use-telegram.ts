@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Api, TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions';
 import { decrypt, generateKeyPair } from '../utils/encryption';
@@ -18,8 +18,9 @@ export type TelegramWrapperLoginParams = {
 };
 
 class TelegramWrapper {
+  untilConnected: Promise<void>;
+  static untilConfig: Promise<any> | undefined;
   private _client: TelegramClient;
-  private _connect: Promise<void>;
   private static _instance: TelegramWrapper;
   static config: TelegramConfig;
   public static get instance(): TelegramWrapper {
@@ -83,10 +84,26 @@ class TelegramWrapper {
   }
 
   async getClient() {
-    if (!this._client.connected) {
-      await this._connect;
-    }
     return this._client;
+  }
+
+  static async getConfig() {
+    if (TelegramWrapper.untilConfig) {
+      await TelegramWrapper.untilConfig;
+      return TelegramWrapper.config;
+    }
+
+    const pairA = generateKeyPair();
+    TelegramWrapper.untilConfig = axios.get(`${API}/secrets/telegram`, {
+      headers: {
+        'public-key': encodeBase64(pairA.publicKey),
+      },
+    });
+    const { data } = await TelegramWrapper.untilConfig;
+    const sharedA = box.before(decodeBase64(data.publicKey), pairA.secretKey);
+    const keys = decrypt(sharedA, data.value);
+    const { apiId, apiHash } = keys;
+    return { apiHash, apiId };
   }
 
   private constructor() {
@@ -97,54 +114,29 @@ class TelegramWrapper {
     this._client = new TelegramClient(session, apiId, apiHash, {
       connectionRetries: 3,
     });
-    this._connect = this._client.connect();
+    this.untilConnected = this._client.connect();
   }
 }
 
 export type Telegram = TelegramWrapper;
 
-function getTelegram(apiId?: number, apiHash?: string) {
-  if (apiId) {
-    TelegramWrapper.config = { ...(TelegramWrapper.config || {}), apiId };
+async function getTelegram() {
+  if (!TelegramWrapper.config) {
+    TelegramWrapper.config = await TelegramWrapper.getConfig();
   }
-  if (apiHash) {
-    TelegramWrapper.config = { ...(TelegramWrapper.config || {}), apiHash };
-  }
-  return TelegramWrapper.instance;
+  const instance = TelegramWrapper.instance;
+  await instance.untilConnected;
+  return instance;
 }
 
 export default function useTelegram() {
-  const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>();
   const [telegram, setTelegram] = useState<TelegramWrapper>();
 
-  const setupTelegramConfig = useCallback(async () => {
-    const pairA = generateKeyPair();
-    const { data } = await axios.get(`${API}/secrets/telegram`, {
-      headers: {
-        'public-key': encodeBase64(pairA.publicKey),
-      },
-    });
-    const sharedA = box.before(decodeBase64(data.publicKey), pairA.secretKey);
-    const keys = decrypt(sharedA, data.value);
-    const { apiId, apiHash } = keys;
-    setTelegramConfig({ apiHash, apiId });
+  useEffect(() => {
+    (async () => {
+      setTelegram(await getTelegram());
+    })();
   }, []);
-
-  const setupHook = useCallback(async () => {
-    if (!telegramConfig) {
-      return;
-    }
-    const { apiId, apiHash } = telegramConfig;
-    setTelegram(getTelegram(apiId, apiHash));
-  }, [telegramConfig]);
-
-  useEffect(() => {
-    setupTelegramConfig();
-  }, [setupTelegramConfig]);
-
-  useEffect(() => {
-    setupHook();
-  }, [setupHook]);
 
   return telegram;
 }
