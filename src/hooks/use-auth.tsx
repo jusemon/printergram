@@ -23,20 +23,7 @@ type User = null | {
   [name: string]: any;
 };
 
-const AuthContext = createContext<AuthContextProps>(
-  {} as unknown as AuthContextProps
-);
-
-export function ProvideAuth({ children }: any) {
-  const auth = useProvideAuth();
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
-
-export function useProvideAuth() {
+function useProvideAuth() {
   const telegram = useTelegram();
   const [user, setUser] = useState<User>(null);
   const [photo, setPhoto] = useState<string>('');
@@ -78,4 +65,17 @@ export function useProvideAuth() {
     signIn,
     signOut,
   };
+}
+
+const AuthContext = createContext<AuthContextProps>(
+  {} as unknown as AuthContextProps
+);
+
+export function ProvideAuth({ children }: any) {
+  const auth = useProvideAuth();
+  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
 }

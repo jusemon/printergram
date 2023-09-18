@@ -18,10 +18,6 @@ import useCountries from '../../hooks/use-countries';
 import useTelegram, { Country } from '../../hooks/use-telegram';
 import { useAuth } from '../../hooks/use-auth';
 
-// type LoginFormProps = {
-//   telegramConfig: Promise<TelegramConfig>;
-// };
-
 export default function LoginForm() {
   const navigate = useNavigate();
   const telegram = useTelegram();
