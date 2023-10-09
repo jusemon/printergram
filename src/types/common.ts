@@ -3,3 +3,8 @@ export type ComboBoxItem<T> = {
   value: string;
   item: T;
 };
+
+export type TelegramError = {
+  code: number;
+  errorMessage: string;
+};

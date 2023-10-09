@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import useTelegram, { TelegramWrapperLoginParams } from './use-telegram';
+import { isTelegramError } from '../utils/type-guards';
 
 type SignIn = ((params: TelegramWrapperLoginParams) => Promise<void>) | null;
 type SignOut = (() => Promise<void>) | null;
@@ -36,10 +37,18 @@ function useProvideAuth() {
     }
 
     if (telegram.isLogged) {
-      const tlUser = await telegram.getMe();
-      setUser(tlUser.toJSON() as unknown as User);
-      const photo = await telegram.getProfilePic();
-      setPhoto(photo);
+      try {
+        const tlUser = await telegram.getMe();
+        setUser(tlUser.toJSON() as unknown as User);
+        const photo = await telegram.getProfilePic();
+        setPhoto(photo);
+      } catch (error) {
+        if (isTelegramError(error) && error.code === 401) {
+          await telegram.logout();
+          setUser(null);
+          setPhoto('');
+        }
+      }
     }
 
     setSignIn(() => async (params: TelegramWrapperLoginParams) => {
@@ -52,6 +61,7 @@ function useProvideAuth() {
     setSignOut(() => async () => {
       await telegram.logout();
       setUser(null);
+      setPhoto('');
     });
   }, [telegram]);
 
